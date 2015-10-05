@@ -3,6 +3,7 @@ package telegram
 import (
 	"fmt"
 	"github.com/Syfaro/telegram-bot-api"
+	"golang.org/x/net/context"
 	"sync"
 )
 
@@ -20,10 +21,10 @@ type Out struct {
 }
 
 type WaitGroup struct {
-	resolved bool
-	value    error
 	lock     sync.Mutex
+	resolved bool
 	count    int
+	error    error
 }
 
 func (self *WaitGroup) Init() {
@@ -45,21 +46,21 @@ func (self *WaitGroup) Resolve(err error) {
 		panic("could not add to resolved handlersGroup")
 	}
 	self.resolved = true
-	self.value = err
+	self.error = err
 	self.lock.Unlock()
 }
 
 func (self *WaitGroup) Wait() error {
 	self.lock.Lock()
 	defer self.lock.Unlock()
-	return self.value
+	return self.error
 }
 
 type Control struct {
 	Out      chan Out
 	lock     sync.Mutex
 	group    *WaitGroup
-	isClosed bool
+	isKilled error
 	isCalled bool
 }
 
@@ -78,25 +79,15 @@ func (self *Control) call(out Out) error {
 		panic("could not be called twice")
 	}
 
-	if self.isClosed {
-		return fmt.Errorf("could not take control - it is already closed")
+	if self.isKilled != nil {
+		return fmt.Errorf("could not take control it is already closed: %s", self.isKilled)
 	}
 
 	self.Out <- out
 	close(self.Out)
-
 	self.isCalled = true
-	self.isClosed = true
 
 	return nil
-}
-
-func (self *Control) close() {
-	self.lock.Lock()
-	defer self.lock.Unlock()
-
-	close(self.Out)
-	self.isClosed = true
 }
 
 func (self *Control) Next() error {
@@ -126,28 +117,32 @@ func (self *Control) Stop() error {
 	return nil
 }
 
-func (self *Control) kill() {
-	self.close()
+func (self *Control) kill(err error) {
+	self.lock.Lock()
+	defer self.lock.Unlock()
+
+	close(self.Out)
+	self.isKilled = err
 }
 
 // main handler
 type Handler interface {
-	Serve(*tgbotapi.BotAPI, *tgbotapi.Update, *Control)
+	Serve(context.Context, *tgbotapi.BotAPI, *tgbotapi.Update, *Control)
 }
 
-type HandlerFunc func(*tgbotapi.BotAPI, *tgbotapi.Update, *Control)
+type HandlerFunc func(context.Context, *tgbotapi.BotAPI, *tgbotapi.Update, *Control)
 
 // main error handler
 type ErrorHandler interface {
-	ServeError(*tgbotapi.BotAPI, *tgbotapi.Update, error, *Control)
+	ServeError(context.Context, *tgbotapi.BotAPI, *tgbotapi.Update, error, *Control)
 }
 
-type ErrorHandlerFunc func(*tgbotapi.BotAPI, *tgbotapi.Update, error, *Control)
+type ErrorHandlerFunc func(context.Context, *tgbotapi.BotAPI, *tgbotapi.Update, error, *Control)
 
-func (self ErrorHandlerFunc) ServeError(bot *tgbotapi.BotAPI, update *tgbotapi.Update, err error, ctrl *Control) {
-	self(bot, update, err, ctrl)
+func (self ErrorHandlerFunc) ServeError(ctx context.Context, bot *tgbotapi.BotAPI, update *tgbotapi.Update, err error, ctrl *Control) {
+	self(ctx, bot, update, err, ctrl)
 }
 
-func (self HandlerFunc) Serve(bot *tgbotapi.BotAPI, update *tgbotapi.Update, ctrl *Control) {
-	self(bot, update, ctrl)
+func (self HandlerFunc) Serve(ctx context.Context, bot *tgbotapi.BotAPI, update *tgbotapi.Update, ctrl *Control) {
+	self(ctx, bot, update, ctrl)
 }

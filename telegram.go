@@ -1,10 +1,13 @@
 package telegram
 
-import "github.com/Syfaro/telegram-bot-api"
+import (
+	"github.com/Syfaro/telegram-bot-api"
+	"golang.org/x/net/context"
+)
 
 type Application struct {
-	Router
-	bot *tgbotapi.BotAPI
+	router Router
+	bot    *tgbotapi.BotAPI
 }
 
 func NewApplication(api *tgbotapi.BotAPI) *Application {
@@ -15,6 +18,7 @@ func NewApplication(api *tgbotapi.BotAPI) *Application {
 
 func (self *Application) Listen() {
 	for update := range self.bot.Updates {
-		go self.OnUpdate(self.bot, &update)
+		ctx := context.Background()
+		go self.router.OnUpdate(ctx, self.bot, &update)
 	}
 }

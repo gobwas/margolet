@@ -2,6 +2,7 @@ package telegram
 
 import (
 	"github.com/Syfaro/telegram-bot-api"
+	"golang.org/x/net/context"
 )
 
 type Router struct {
@@ -13,8 +14,8 @@ func NewRouter() *Router {
 	return &Router{}
 }
 
-func (self *Router) Serve(bot *tgbotapi.BotAPI, update *tgbotapi.Update, ctrl *Control) {
-	if err := self.OnUpdate(bot, update); err != nil {
+func (self *Router) Serve(ctx context.Context, bot *tgbotapi.BotAPI, update *tgbotapi.Update, ctrl *Control) {
+	if err := self.OnUpdate(ctx, bot, update); err != nil {
 		ctrl.Error(err)
 	}
 
@@ -25,7 +26,7 @@ func (self *Router) Use(handlers ...Handler) {
 	self.handlers = append(self.handlers, handlers...)
 }
 
-func (self *Router) UseFunc(handlers ...func(*tgbotapi.BotAPI, *tgbotapi.Update, *Control)) {
+func (self *Router) UseFunc(handlers ...func(context.Context, *tgbotapi.BotAPI, *tgbotapi.Update, *Control)) {
 	self.Use(mapHandlerFunc(handlers)...)
 }
 
@@ -33,7 +34,7 @@ func (self *Router) UseOn(pattern string, handlers ...Handler) {
 	self.handlers = append(self.handlers, mapRouteHandler(pattern, handlers)...)
 }
 
-func (self *Router) UseFuncOn(pattern string, handlers ...func(*tgbotapi.BotAPI, *tgbotapi.Update, *Control)) {
+func (self *Router) UseFuncOn(pattern string, handlers ...func(context.Context, *tgbotapi.BotAPI, *tgbotapi.Update, *Control)) {
 	self.handlers = append(self.handlers, mapRouteHandler(pattern, mapHandlerFunc(handlers))...)
 }
 
@@ -41,55 +42,53 @@ func (self *Router) UseErr(handlers ...ErrorHandler) {
 	self.errorHandlers = append(self.errorHandlers, handlers...)
 }
 
-func (self *Router) UseErrFunc(handlers ...func(*tgbotapi.BotAPI, *tgbotapi.Update, error, *Control)) {
+func (self *Router) UseErrFunc(handlers ...func(context.Context, *tgbotapi.BotAPI, *tgbotapi.Update, error, *Control)) {
 	self.UseErr(mapErrorHandlerFunc(handlers)...)
 }
 
-func (self *Router) OnUpdate(bot *tgbotapi.BotAPI, update *tgbotapi.Update) (err error) {
-	err = iterate(self.handlers, bot, update)
+func (self *Router) OnUpdate(ctx context.Context, bot *tgbotapi.BotAPI, update *tgbotapi.Update) (err error) {
+	err = iterate(ctx, self.handlers, bot, update)
 	if err != nil {
-		err = iterateError(self.errorHandlers, bot, update, err)
+		err = iterateError(ctx, self.errorHandlers, bot, update, err)
 	}
 
 	return
 }
 
-func iterate(handlers []Handler, bot *tgbotapi.BotAPI, update *tgbotapi.Update) error {
+func iterate(ctx context.Context, handlers []Handler, bot *tgbotapi.BotAPI, update *tgbotapi.Update) error {
 	group := WaitGroup{}
 	group.Init()
+
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
 
 	for _, handler := range handlers {
 		ctrl := NewControl(&group)
 		group.Add(1)
 
-		// start timeout
-		//		timeout := make(chan int)
-		//		go func() {
-		//			time.Sleep(timeout * time.Millisecond)
-		//			timeout <- 1
-		//			close(timeout)
-		//		}()
-
 		// start handling
-		go handler.Serve(bot, update, ctrl)
+		go handler.Serve(ctx, bot, update, ctrl)
 
-		// race
-		//		select {
-		//		case out := <-ctrl.Out:
-		out := <-ctrl.Out
-		switch out.Signal {
-		case NEXT:
-			//
-		case ERROR:
-			group.Resolve(out.Error)
-			return out.Error
-		case STOP:
-			group.Resolve(nil)
-			return nil
+		// race with ctx
+		select {
+		case <-ctx.Done():
+			err := ctx.Err()
+			// close channel
+			ctrl.kill(err)
+			group.Resolve(err)
+			return err
+		case out := <-ctrl.Out:
+			switch out.Signal {
+			case NEXT:
+				continue
+			case ERROR:
+				group.Resolve(out.Error)
+				return out.Error
+			case STOP:
+				group.Resolve(nil)
+				return nil
+			}
 		}
-		//		case <-timeout:
-		//			ctrl.kill()
-		//		}
 	}
 
 	// release whole loop
@@ -97,24 +96,34 @@ func iterate(handlers []Handler, bot *tgbotapi.BotAPI, update *tgbotapi.Update) 
 	return nil
 }
 
-func iterateError(handlers []ErrorHandler, bot *tgbotapi.BotAPI, update *tgbotapi.Update, initial error) error {
+func iterateError(ctx context.Context, handlers []ErrorHandler, bot *tgbotapi.BotAPI, update *tgbotapi.Update, initial error) error {
 	group := WaitGroup{}
 	group.Init()
+
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
 
 	err := initial
 	for _, handler := range handlers {
 		ctrl := NewControl(&group)
 		group.Add(1)
 
-		go handler.ServeError(bot, update, err, ctrl)
+		go handler.ServeError(ctx, bot, update, err, ctrl)
 
-		out := <-ctrl.Out
-		switch out.Signal {
-		case ERROR:
-			err = out.Error
-		case STOP, NEXT:
-			group.Resolve(nil)
-			return nil
+		select {
+		case <-ctx.Done():
+			err := ctx.Err()
+			ctrl.kill(err)
+			group.Resolve(err)
+			return err
+		case out := <-ctrl.Out:
+			switch out.Signal {
+			case ERROR:
+				err = out.Error
+			case STOP, NEXT:
+				group.Resolve(nil)
+				return nil
+			}
 		}
 	}
 

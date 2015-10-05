@@ -1,6 +1,9 @@
 package telegram
 
-import "github.com/Syfaro/telegram-bot-api"
+import (
+	"github.com/Syfaro/telegram-bot-api"
+	"golang.org/x/net/context"
+)
 
 func mapRouteHandler(pattern string, handlers []Handler) []Handler {
 	var mapped []Handler
@@ -11,7 +14,7 @@ func mapRouteHandler(pattern string, handlers []Handler) []Handler {
 	return mapped
 }
 
-func mapHandlerFunc(handlers []func(*tgbotapi.BotAPI, *tgbotapi.Update, *Control)) []Handler {
+func mapHandlerFunc(handlers []func(context.Context, *tgbotapi.BotAPI, *tgbotapi.Update, *Control)) []Handler {
 	var mapped []Handler
 	for _, handler := range handlers {
 		mapped = append(mapped, HandlerFunc(handler))
@@ -20,7 +23,7 @@ func mapHandlerFunc(handlers []func(*tgbotapi.BotAPI, *tgbotapi.Update, *Control
 	return mapped
 }
 
-func mapErrorHandlerFunc(handlers []func(*tgbotapi.BotAPI, *tgbotapi.Update, error, *Control)) []ErrorHandler {
+func mapErrorHandlerFunc(handlers []func(context.Context, *tgbotapi.BotAPI, *tgbotapi.Update, error, *Control)) []ErrorHandler {
 	var mapped []ErrorHandler
 	for _, handler := range handlers {
 		mapped = append(mapped, ErrorHandlerFunc(handler))

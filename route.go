@@ -3,6 +3,7 @@ package telegram
 import (
 	"fmt"
 	"github.com/Syfaro/telegram-bot-api"
+	"golang.org/x/net/context"
 	"regexp"
 )
 
@@ -24,9 +25,9 @@ type Route struct {
 	handler Handler
 }
 
-func (self *Route) Serve(bot *tgbotapi.BotAPI, update *tgbotapi.Update, ctrl *Control) {
+func (self *Route) Serve(ctx context.Context, bot *tgbotapi.BotAPI, update *tgbotapi.Update, ctrl *Control) {
 	if MatchPattern(self.pattern, update.Message.Text) {
-		self.handler.Serve(bot, update, ctrl)
+		self.handler.Serve(ctx, bot, update, ctrl)
 		return
 	}
 
