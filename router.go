@@ -139,7 +139,7 @@ func (self Router) traverseError(ctx context.Context, bot *tgbotapi.BotAPI, upda
 				err = ctrl.Error()
 				continue
 			case NEXT:
-				return nil
+				continue
 			case STOP:
 				cancel()
 				return nil

@@ -97,17 +97,21 @@ func TestRouter(t *testing.T) {
 	g := Goblin(t)
 
 	g.Describe("Router", func() {
-		var bot tgbotapi.BotAPI
-		var update tgbotapi.Update
+		var (
+			bot    tgbotapi.BotAPI
+			update tgbotapi.Update
+			router Router
+		)
 
 		g.BeforeEach(func() {
 			bot = tgbotapi.BotAPI{}
 			update = tgbotapi.Update{}
+			router = *NewRouter()
 		})
 
-		g.It("Should UseFunc()  okay", func() {
+		g.It("Should UseFunc() okay", func() {
 			var called bool
-			router := NewRouter()
+
 			router.UseFunc(func(ctx context.Context, ctrl *Control, bot *tgbotapi.BotAPI, update *tgbotapi.Update) {
 				called = true
 				ctrl.Next()
@@ -119,29 +123,42 @@ func TestRouter(t *testing.T) {
 		})
 
 		g.It("Should call in chain", func() {
+
+			// this handled ok
 			AHandler := NewHandlerSpy(func(ctx context.Context, ctrl *Control, bot *tgbotapi.BotAPI, update *tgbotapi.Update) {
 				ctrl.Next()
 			})
+
+			// this throwed error
 			BHandler := NewHandlerSpy(func(ctx context.Context, ctrl *Control, bot *tgbotapi.BotAPI, update *tgbotapi.Update) {
 				ctrl.Throw(fmt.Errorf("BHandler error"))
 			})
+
+			// this should not be called
 			CHandler := NewHandlerSpy(func(ctx context.Context, ctrl *Control, bot *tgbotapi.BotAPI, update *tgbotapi.Update) {
 				ctrl.Next()
 			})
+
+			// this could not fix the error
 			AErrorHandler := NewErrorSpy(func(ctx context.Context, ctrl *Control, bot *tgbotapi.BotAPI, update *tgbotapi.Update, err error) {
 				ctrl.Throw(err)
 			})
+
+			// this could not fix error and throw new error
 			BErrorHandler := NewErrorSpy(func(ctx context.Context, ctrl *Control, bot *tgbotapi.BotAPI, update *tgbotapi.Update, err error) {
 				ctrl.Throw(fmt.Errorf("BErrorHandler error"))
 			})
+
+			// this fixed error
 			CErrorHandler := NewErrorSpy(func(ctx context.Context, ctrl *Control, bot *tgbotapi.BotAPI, update *tgbotapi.Update, err error) {
-				ctrl.Next()
+				ctrl.Stop()
 			})
+
+			// this should not be called
 			DErrorHandler := NewErrorSpy(func(ctx context.Context, ctrl *Control, bot *tgbotapi.BotAPI, update *tgbotapi.Update, err error) {
 				ctrl.Next()
 			})
 
-			router := NewRouter()
 			router.UseFunc(AHandler.Fn, BHandler.Fn, CHandler.Fn)
 			router.UseErrFunc(AErrorHandler.Fn, BErrorHandler.Fn, CErrorHandler.Fn, DErrorHandler.Fn)
 
@@ -179,6 +196,5 @@ func TestRouter(t *testing.T) {
 				g.Assert(cErrArg.Error()).Eql("BErrorHandler error")
 			}
 		})
-
 	})
 }

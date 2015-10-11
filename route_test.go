@@ -12,22 +12,30 @@ func TestRoute(t *testing.T) {
 
 	g.Describe("Route", func() {
 
-		g.It("Should pass valid pattern", func() {
-			NewRoute("/pattern", HandlerFunc(func(ctx context.Context, ctrl *Control, bot *tgbotapi.BotAPI, update *tgbotapi.Update) {
-
-			}))
-		})
-
 		g.It("Should call valid pattern", func() {
 			var called int
 
-			route := NewRoute("/pattern", HandlerFunc(func(ctx context.Context, ctrl *Control, bot *tgbotapi.BotAPI, update *tgbotapi.Update) {
+			route := Route{Equal{"/pattern"}, HandlerFunc(func(ctx context.Context, ctrl *Control, bot *tgbotapi.BotAPI, update *tgbotapi.Update) {
 				called++
-			}))
+			})}
 
 			route.Serve(context.Background(), &Control{}, &tgbotapi.BotAPI{}, &tgbotapi.Update{Message: tgbotapi.Message{Text: "/pattern"}})
 
 			g.Assert(called).Eql(1)
+		})
+
+		g.It("Should set context 'route' key", func() {
+			var val Match
+
+			route := Route{Equal{"/abc"}, HandlerFunc(func(ctx context.Context, ctrl *Control, bot *tgbotapi.BotAPI, update *tgbotapi.Update) {
+				if v, ok := ctx.Value("route").(Match); ok {
+					val = v
+				}
+			})}
+
+			route.Serve(context.Background(), &Control{}, &tgbotapi.BotAPI{}, &tgbotapi.Update{Message: tgbotapi.Message{Text: "/abc"}})
+
+			g.Assert(val).Eql(Match{"text": "/abc"})
 		})
 
 	})

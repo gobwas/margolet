@@ -12,6 +12,10 @@ type Handler interface {
 
 type HandlerFunc func(context.Context, *Control, *tgbotapi.BotAPI, *tgbotapi.Update)
 
+func (self HandlerFunc) Serve(ctx context.Context, ctrl *Control, bot *tgbotapi.BotAPI, update *tgbotapi.Update) {
+	self(ctx, ctrl, bot, update)
+}
+
 // main error handler
 type ErrorHandler interface {
 	ServeError(context.Context, *Control, *tgbotapi.BotAPI, *tgbotapi.Update, error)
@@ -21,8 +25,4 @@ type ErrorHandlerFunc func(context.Context, *Control, *tgbotapi.BotAPI, *tgbotap
 
 func (self ErrorHandlerFunc) ServeError(ctx context.Context, ctrl *Control, bot *tgbotapi.BotAPI, update *tgbotapi.Update, err error) {
 	self(ctx, ctrl, bot, update, err)
-}
-
-func (self HandlerFunc) Serve(ctx context.Context, ctrl *Control, bot *tgbotapi.BotAPI, update *tgbotapi.Update) {
-	self(ctx, ctrl, bot, update)
 }

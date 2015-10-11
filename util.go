@@ -8,7 +8,7 @@ import (
 func mapRouteHandler(pattern string, handlers []Handler) []Handler {
 	var mapped []Handler
 	for _, handler := range handlers {
-		mapped = append(mapped, NewRoute(pattern, handler))
+		mapped = append(mapped, &Route{Equal{pattern}, handler})
 	}
 
 	return mapped
