@@ -25,9 +25,10 @@ type Route struct {
 	handler Handler
 }
 
-func (self *Route) Serve(ctx context.Context, bot *tgbotapi.BotAPI, update *tgbotapi.Update, ctrl *Control) {
+func (self *Route) Serve(ctx context.Context, ctrl *Control, bot *tgbotapi.BotAPI, update *tgbotapi.Update) {
 	if MatchPattern(self.pattern, update.Message.Text) {
-		self.handler.Serve(ctx, bot, update, ctrl)
+		// todo here replace route if it regexp matcher
+		self.handler.Serve(context.WithValue(ctx, "route", update.Message.Text), ctrl, bot, update)
 		return
 	}
 

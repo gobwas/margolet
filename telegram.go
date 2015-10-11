@@ -6,11 +6,11 @@ import (
 )
 
 type Application struct {
-	router Router
-	bot    *tgbotapi.BotAPI
+	Router
+	bot *tgbotapi.BotAPI
 }
 
-func NewApplication(api *tgbotapi.BotAPI) *Application {
+func New(api *tgbotapi.BotAPI) *Application {
 	return &Application{
 		bot: api,
 	}
@@ -19,6 +19,6 @@ func NewApplication(api *tgbotapi.BotAPI) *Application {
 func (self *Application) Listen() {
 	for update := range self.bot.Updates {
 		ctx := context.Background()
-		go self.router.OnUpdate(ctx, self.bot, &update)
+		go self.HandleUpdate(ctx, self.bot, &update)
 	}
 }
