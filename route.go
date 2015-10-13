@@ -12,7 +12,7 @@ type Route struct {
 
 func (self *Route) Serve(ctx context.Context, ctrl *Control, bot *tgbotapi.BotAPI, update *tgbotapi.Update) {
 	if match, ok := self.matcher.Match(update.Message.Text); ok {
-		self.handler.Serve(context.WithValue(ctx, "route", *match), ctrl, bot, update)
+		self.handler.Serve(context.WithValue(ctx, ROUTE, *match), ctrl, bot, update)
 		return
 	}
 

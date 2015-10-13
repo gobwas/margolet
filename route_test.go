@@ -28,14 +28,14 @@ func TestRoute(t *testing.T) {
 			var val Match
 
 			route := Route{Equal{"/abc"}, HandlerFunc(func(ctx context.Context, ctrl *Control, bot *tgbotapi.BotAPI, update *tgbotapi.Update) {
-				if v, ok := ctx.Value("route").(Match); ok {
+				if v, ok := ctx.Value(ROUTE).(Match); ok {
 					val = v
 				}
 			})}
 
 			route.Serve(context.Background(), &Control{}, &tgbotapi.BotAPI{}, &tgbotapi.Update{Message: tgbotapi.Message{Text: "/abc"}})
 
-			g.Assert(val).Eql(Match{"text": "/abc"})
+			g.Assert(val).Eql(Match{Text: "/abc"})
 		})
 
 	})
