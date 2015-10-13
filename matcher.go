@@ -2,12 +2,6 @@ package telegram
 
 import "regexp"
 
-type DataKey byte
-
-const (
-	SUB_MATCH DataKey = iota
-)
-
 type Slug struct {
 	Key, Value string
 }
@@ -15,7 +9,6 @@ type Slug struct {
 type Match struct {
 	Text  string
 	Slugs []Slug
-	Data  map[interface{}]interface{}
 }
 
 type Matcher interface {
@@ -35,14 +28,21 @@ func (self Equal) Match(text string) (match *Match, ok bool) {
 	return
 }
 
+type RegExpMatch struct {
+	Match
+	Submatch []string
+}
+
 type RegExp struct {
 	pattern *regexp.Regexp
 }
 
 func (self RegExp) Match(text string) (match *Match, ok bool) {
-	if sub := self.pattern.FindStringSubmatch(text); len(sub) == 1+self.pattern.NumSubexp() {
-		match = &Match{Text: text, Data: make(map[interface{}]interface{})}
-		match.Data[SUB_MATCH] = sub
+	if self.pattern.MatchString(text) {
+		match = &Match{Text: text}
+		for _, sub := range self.pattern.FindStringSubmatch(text)[1:] {
+			match.Slugs = append(match.Slugs, Slug{Value: sub})
+		}
 		ok = true
 	}
 

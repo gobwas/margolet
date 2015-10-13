@@ -24,8 +24,8 @@ func TestMatcher(t *testing.T) {
 					`/a/b`,
 					&Match{
 						Text: `/a/b`,
-						Data: map[interface{}]interface{}{
-							SUB_MATCH: []string{`/a/b`, `b`},
+						Slugs: []Slug{
+							Slug{Value: `b`},
 						},
 					},
 				},
