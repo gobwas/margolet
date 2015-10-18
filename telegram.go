@@ -28,7 +28,7 @@ type Polling struct {
 type WebHook struct {
 	URL    url.URL
 	Listen Listen
-	SSL    *SSL
+	SSL    SSL
 }
 
 type SSL struct {
