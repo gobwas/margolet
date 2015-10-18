@@ -3,5 +3,5 @@ package telegram
 type Value byte
 
 const (
-	ROUTE Value = iota
+	MATCH Value = iota
 )

@@ -29,37 +29,37 @@ func (s Spy) GetCalls() []Call {
 
 type HandlerSpy struct {
 	Spy
-	Fn func(ctx context.Context, ctrl *Control, bot *tgbotapi.BotAPI, update *tgbotapi.Update)
+	Fn func(ctrl *Control, bot *tgbotapi.BotAPI, update *tgbotapi.Update)
 }
 
 type ErrorSpy struct {
 	Spy
-	Fn func(ctx context.Context, ctrl *Control, bot *tgbotapi.BotAPI, update *tgbotapi.Update, err error)
+	Fn func(ctrl *Control, bot *tgbotapi.BotAPI, update *tgbotapi.Update, err error)
 }
 
-func NewHandlerSpy(fn func(ctx context.Context, ctrl *Control, bot *tgbotapi.BotAPI, update *tgbotapi.Update)) *HandlerSpy {
+func NewHandlerSpy(fn func(ctrl *Control, bot *tgbotapi.BotAPI, update *tgbotapi.Update)) *HandlerSpy {
 	spy := HandlerSpy{}
-	spy.Fn = func(ctx context.Context, ctrl *Control, bot *tgbotapi.BotAPI, update *tgbotapi.Update) {
+	spy.Fn = func(ctrl *Control, bot *tgbotapi.BotAPI, update *tgbotapi.Update) {
 		spy.CallCount++
 		spy.Calls = append(spy.Calls, Call{
 			Time: time.Now(),
-			Args: []interface{}{ctx, ctrl, bot, update},
+			Args: []interface{}{ctrl, bot, update},
 		})
-		fn(ctx, ctrl, bot, update)
+		fn(ctrl, bot, update)
 	}
 
 	return &spy
 }
 
-func NewErrorSpy(fn func(ctx context.Context, ctrl *Control, bot *tgbotapi.BotAPI, update *tgbotapi.Update, err error)) *ErrorSpy {
+func NewErrorSpy(fn func(ctrl *Control, bot *tgbotapi.BotAPI, update *tgbotapi.Update, err error)) *ErrorSpy {
 	spy := ErrorSpy{}
-	spy.Fn = func(ctx context.Context, ctrl *Control, bot *tgbotapi.BotAPI, update *tgbotapi.Update, err error) {
+	spy.Fn = func(ctrl *Control, bot *tgbotapi.BotAPI, update *tgbotapi.Update, err error) {
 		spy.CallCount++
 		spy.Calls = append(spy.Calls, Call{
 			Time: time.Now(),
-			Args: []interface{}{ctx, ctrl, bot, update, err},
+			Args: []interface{}{ctrl, bot, update, err},
 		})
-		fn(ctx, ctrl, bot, update, err)
+		fn(ctrl, bot, update, err)
 	}
 
 	return &spy
@@ -112,7 +112,7 @@ func TestRouter(t *testing.T) {
 		g.It("Should UseFunc() okay", func() {
 			var called bool
 
-			router.UseFunc(func(ctx context.Context, ctrl *Control, bot *tgbotapi.BotAPI, update *tgbotapi.Update) {
+			router.UseFunc(func(ctrl *Control, bot *tgbotapi.BotAPI, update *tgbotapi.Update) {
 				called = true
 				ctrl.Next()
 			})
@@ -122,40 +122,62 @@ func TestRouter(t *testing.T) {
 			g.Assert(called).IsTrue()
 		})
 
+		g.It("Should change next context", func() {
+			router.UseFunc(
+				func(ctrl *Control, bot *tgbotapi.BotAPI, update *tgbotapi.Update) {
+					ctrl.WithValue("foo", "bar")
+					ctrl.Next()
+				},
+				func(ctrl *Control, bot *tgbotapi.BotAPI, update *tgbotapi.Update) {
+					if val, ok := ctrl.Context().Value("foo").(string); !ok || val != "bar" {
+						ctrl.Throw(fmt.Errorf(`Expected "foo", but got %s`, val))
+					} else {
+						ctrl.Next()
+					}
+				},
+			)
+
+			err := router.HandleUpdate(context.Background(), &bot, &update)
+			if err != nil {
+				g.Fail(err)
+				return
+			}
+		})
+
 		g.It("Should call in chain", func() {
 
 			// this handled ok
-			AHandler := NewHandlerSpy(func(ctx context.Context, ctrl *Control, bot *tgbotapi.BotAPI, update *tgbotapi.Update) {
+			AHandler := NewHandlerSpy(func(ctrl *Control, bot *tgbotapi.BotAPI, update *tgbotapi.Update) {
 				ctrl.Next()
 			})
 
 			// this throwed error
-			BHandler := NewHandlerSpy(func(ctx context.Context, ctrl *Control, bot *tgbotapi.BotAPI, update *tgbotapi.Update) {
+			BHandler := NewHandlerSpy(func(ctrl *Control, bot *tgbotapi.BotAPI, update *tgbotapi.Update) {
 				ctrl.Throw(fmt.Errorf("BHandler error"))
 			})
 
 			// this should not be called
-			CHandler := NewHandlerSpy(func(ctx context.Context, ctrl *Control, bot *tgbotapi.BotAPI, update *tgbotapi.Update) {
+			CHandler := NewHandlerSpy(func(ctrl *Control, bot *tgbotapi.BotAPI, update *tgbotapi.Update) {
 				ctrl.Next()
 			})
 
 			// this could not fix the error
-			AErrorHandler := NewErrorSpy(func(ctx context.Context, ctrl *Control, bot *tgbotapi.BotAPI, update *tgbotapi.Update, err error) {
+			AErrorHandler := NewErrorSpy(func(ctrl *Control, bot *tgbotapi.BotAPI, update *tgbotapi.Update, err error) {
 				ctrl.Throw(err)
 			})
 
 			// this could not fix error and throw new error
-			BErrorHandler := NewErrorSpy(func(ctx context.Context, ctrl *Control, bot *tgbotapi.BotAPI, update *tgbotapi.Update, err error) {
+			BErrorHandler := NewErrorSpy(func(ctrl *Control, bot *tgbotapi.BotAPI, update *tgbotapi.Update, err error) {
 				ctrl.Throw(fmt.Errorf("BErrorHandler error"))
 			})
 
 			// this fixed error
-			CErrorHandler := NewErrorSpy(func(ctx context.Context, ctrl *Control, bot *tgbotapi.BotAPI, update *tgbotapi.Update, err error) {
+			CErrorHandler := NewErrorSpy(func(ctrl *Control, bot *tgbotapi.BotAPI, update *tgbotapi.Update, err error) {
 				ctrl.Stop()
 			})
 
 			// this should not be called
-			DErrorHandler := NewErrorSpy(func(ctx context.Context, ctrl *Control, bot *tgbotapi.BotAPI, update *tgbotapi.Update, err error) {
+			DErrorHandler := NewErrorSpy(func(ctrl *Control, bot *tgbotapi.BotAPI, update *tgbotapi.Update, err error) {
 				ctrl.Next()
 			})
 
@@ -183,14 +205,14 @@ func TestRouter(t *testing.T) {
 			g.Assert(AErrorHandler.CalledBefore(BErrorHandler)).IsTrue()
 			g.Assert(BErrorHandler.CalledBefore(CErrorHandler)).IsTrue()
 
-			if bErrArg, ok := BErrorHandler.Calls[0].Args[4].(error); !ok {
+			if bErrArg, ok := BErrorHandler.Calls[0].Args[3].(error); !ok {
 				fmt.Printf("%t", BErrorHandler.Calls[0].Args)
 				g.Fail("Mismatched type: expected error")
 			} else {
 				g.Assert(bErrArg.Error()).Eql("BHandler error")
 			}
 
-			if cErrArg, ok := CErrorHandler.Calls[0].Args[4].(error); !ok {
+			if cErrArg, ok := CErrorHandler.Calls[0].Args[3].(error); !ok {
 				g.Fail("Mismatched type: expected error")
 			} else {
 				g.Assert(cErrArg.Error()).Eql("BErrorHandler error")

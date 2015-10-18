@@ -1,6 +1,7 @@
 package telegram
 
 import (
+	"github.com/Syfaro/telegram-bot-api"
 	. "github.com/franela/goblin"
 	"regexp"
 	"testing"
@@ -15,15 +16,15 @@ func TestMatcher(t *testing.T) {
 			for _, test := range []struct {
 				pattern *regexp.Regexp
 				ok      bool
-				text    string
+				text    tgbotapi.Message
 				match   *Match
 			}{
 				{
 					regexp.MustCompile(`/a/([a-z]+)`),
 					true,
-					`/a/b`,
+					tgbotapi.Message{Text: `/a/b`},
 					&Match{
-						Text: `/a/b`,
+						Message: tgbotapi.Message{Text: `/a/b`},
 						Slugs: []Slug{
 							Slug{Value: `b`},
 						},

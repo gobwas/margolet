@@ -15,8 +15,8 @@ func NewRouter() *Router {
 	return &Router{}
 }
 
-func (self *Router) Serve(ctx context.Context, ctrl *Control, bot *tgbotapi.BotAPI, update *tgbotapi.Update) {
-	if err := self.HandleUpdate(ctx, bot, update); err != nil {
+func (self *Router) Serve(ctrl *Control, bot *tgbotapi.BotAPI, update *tgbotapi.Update) {
+	if err := self.HandleUpdate(ctrl.Context(), bot, update); err != nil {
 		ctrl.Throw(err)
 	}
 
@@ -27,7 +27,7 @@ func (self *Router) Use(handlers ...Handler) {
 	self.handlers = append(self.handlers, handlers...)
 }
 
-func (self *Router) UseFunc(handlers ...func(context.Context, *Control, *tgbotapi.BotAPI, *tgbotapi.Update)) {
+func (self *Router) UseFunc(handlers ...func(*Control, *tgbotapi.BotAPI, *tgbotapi.Update)) {
 	self.Use(mapHandlerFunc(handlers)...)
 }
 
@@ -35,7 +35,7 @@ func (self *Router) UseOn(pattern string, handlers ...Handler) {
 	self.handlers = append(self.handlers, mapRouteHandler(pattern, handlers)...)
 }
 
-func (self *Router) UseFuncOn(pattern string, handlers ...func(context.Context, *Control, *tgbotapi.BotAPI, *tgbotapi.Update)) {
+func (self *Router) UseFuncOn(pattern string, handlers ...func(*Control, *tgbotapi.BotAPI, *tgbotapi.Update)) {
 	self.handlers = append(self.handlers, mapRouteHandler(pattern, mapHandlerFunc(handlers))...)
 }
 
@@ -43,7 +43,7 @@ func (self *Router) UseErr(handlers ...ErrorHandler) {
 	self.errorHandlers = append(self.errorHandlers, handlers...)
 }
 
-func (self *Router) UseErrFunc(handlers ...func(context.Context, *Control, *tgbotapi.BotAPI, *tgbotapi.Update, error)) {
+func (self *Router) UseErrFunc(handlers ...func(*Control, *tgbotapi.BotAPI, *tgbotapi.Update, error)) {
 	self.UseErr(mapErrorHandlerFunc(handlers)...)
 }
 
@@ -71,7 +71,7 @@ func (self Router) traverseUpdate(ctx context.Context, bot *tgbotapi.BotAPI, upd
 		group.Add(1)
 
 		// start handling
-		go handler.Serve(ctx, ctrl, bot, update)
+		go handler.Serve(ctrl, bot, update)
 
 		// race with ctx
 		select {
@@ -83,7 +83,7 @@ func (self Router) traverseUpdate(ctx context.Context, bot *tgbotapi.BotAPI, upd
 
 			return err
 
-		case signal := <-ctrl.Done:
+		case signal := <-ctrl.done:
 			group.Done()
 
 			switch signal {
@@ -92,7 +92,7 @@ func (self Router) traverseUpdate(ctx context.Context, bot *tgbotapi.BotAPI, upd
 				continue
 
 			case ERROR:
-				err := ctrl.Error()
+				err := ctrl.error()
 				cancel()
 				return err
 
@@ -120,7 +120,7 @@ func (self Router) traverseError(ctx context.Context, bot *tgbotapi.BotAPI, upda
 		ctrl := NewControl(ctx, Wait(group.Wait))
 		group.Add(1)
 
-		go handler.ServeError(ctx, ctrl, bot, update, err)
+		go handler.ServeError(ctrl, bot, update, err)
 
 		select {
 		case <-ctx.Done():
@@ -131,12 +131,12 @@ func (self Router) traverseError(ctx context.Context, bot *tgbotapi.BotAPI, upda
 
 			return err
 
-		case signal := <-ctrl.Done:
+		case signal := <-ctrl.done:
 			group.Done()
 
 			switch signal {
 			case ERROR:
-				err = ctrl.Error()
+				err = ctrl.error()
 				continue
 			case NEXT:
 				continue
