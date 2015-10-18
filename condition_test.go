@@ -28,7 +28,7 @@ func TestRoute(t *testing.T) {
 			var val matcher.Match
 
 			route := Condition{matcher.Equal{"/abc"}, HandlerFunc(func(ctrl *Control, bot *tgbotapi.BotAPI, update tgbotapi.Update) {
-				if v, ok := ctrl.Context().Value(v_MATCH).(matcher.Match); ok {
+				if v, ok := ctrl.Context().Value(MATCH).(matcher.Match); ok {
 					val = v
 				}
 			})}
