@@ -12,9 +12,9 @@ var Stopped = errors.New("control stopped")
 type Signal int
 
 const (
-	NEXT Signal = iota
-	ERROR
-	STOP
+	s_NEXT Signal = iota
+	s_ERROR
+	s_STOP
 )
 
 type Wait func()
@@ -96,7 +96,7 @@ func (self *Control) WithValue(key interface{}, val interface{}) {
 }
 
 func (self *Control) Next() error {
-	if err := self.setState(NEXT, nil); err != nil {
+	if err := self.setState(s_NEXT, nil); err != nil {
 		return err
 	}
 
@@ -105,7 +105,7 @@ func (self *Control) Next() error {
 }
 
 func (self *Control) Throw(e error) error {
-	if err := self.setState(ERROR, e); err != nil {
+	if err := self.setState(s_ERROR, e); err != nil {
 		return err
 	}
 
@@ -116,7 +116,7 @@ func (self *Control) Throw(e error) error {
 }
 
 func (self *Control) Stop() error {
-	if err := self.setState(STOP, Stopped); err != nil {
+	if err := self.setState(s_STOP, Stopped); err != nil {
 		return err
 	}
 

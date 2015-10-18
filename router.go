@@ -87,16 +87,16 @@ func (self Router) traverseUpdate(ctx context.Context, bot *tgbotapi.BotAPI, upd
 			group.Done()
 
 			switch signal {
-			case NEXT:
+			case s_NEXT:
 				ctx = ctrl.Context()
 				continue
 
-			case ERROR:
+			case s_ERROR:
 				err := ctrl.error()
 				cancel()
 				return err
 
-			case STOP:
+			case s_STOP:
 				cancel()
 				return nil
 			}
@@ -135,12 +135,12 @@ func (self Router) traverseError(ctx context.Context, bot *tgbotapi.BotAPI, upda
 			group.Done()
 
 			switch signal {
-			case ERROR:
+			case s_ERROR:
 				err = ctrl.error()
 				continue
-			case NEXT:
+			case s_NEXT:
 				continue
-			case STOP:
+			case s_STOP:
 				cancel()
 				return nil
 			}

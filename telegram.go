@@ -54,28 +54,29 @@ func New(config Config) (app *Application, err error) {
 	}
 	bot.Debug = config.Debug
 
+	// todo move it somehow in app.Listen()
 	switch {
-	case self.config.WebHook != nil:
-		config := self.config.WebHook
+	case config.WebHook != nil:
+		config := config.WebHook
 
-		if _, err := self.bot.SetWebhook(tgbotapi.WebhookConfig{URL: &config.URL, Certificate: config.SSL.Cert}); err != nil {
-			return err
+		if _, err := bot.SetWebhook(tgbotapi.WebhookConfig{URL: &config.URL, Certificate: config.SSL.Cert}); err != nil {
+			return nil, err
 		}
 
-		self.bot.ListenForWebhook("/" + config.URL.Path)
+		bot.ListenForWebhook("/" + config.URL.Path)
 		go http.ListenAndServeTLS(fmt.Sprintf("%s:%d", config.Listen.Addr, config.Listen.Port), config.SSL.Cert, config.SSL.Key, nil)
-	case self.config.Polling != nil:
-		config := self.config.Polling
+	case config.Polling != nil:
+		config := config.Polling
 
 		u := tgbotapi.NewUpdate(config.Offset)
 		u.Timeout = config.Timeout
 
-		err := self.bot.UpdatesChan(u)
+		err := bot.UpdatesChan(u)
 		if err != nil {
-			return err
+			return nil, err
 		}
 	default:
-		return fmt.Errorf("Could not listen for updates: Polling or WebHook config should be set")
+		return nil, fmt.Errorf("Could not listen for updates: Polling or WebHook config should be set")
 	}
 
 	return NewByBot(bot)
@@ -86,4 +87,6 @@ func (self *Application) Listen() error {
 		ctx := context.Background()
 		go self.HandleUpdate(ctx, self.bot, &update)
 	}
+
+	return nil
 }

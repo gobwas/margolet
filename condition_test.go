@@ -15,7 +15,7 @@ func TestRoute(t *testing.T) {
 		g.It("Should call valid pattern", func() {
 			var called int
 
-			route := Conditional{matcher.Equal{"/pattern"}, HandlerFunc(func(ctrl *Control, bot *tgbotapi.BotAPI, update *tgbotapi.Update) {
+			route := Condition{matcher.Equal{"/pattern"}, HandlerFunc(func(ctrl *Control, bot *tgbotapi.BotAPI, update *tgbotapi.Update) {
 				called++
 			})}
 
@@ -27,8 +27,8 @@ func TestRoute(t *testing.T) {
 		g.It("Should set context's MATCH key", func() {
 			var val matcher.Match
 
-			route := Conditional{matcher.Equal{"/abc"}, HandlerFunc(func(ctrl *Control, bot *tgbotapi.BotAPI, update *tgbotapi.Update) {
-				if v, ok := ctrl.Context().Value(MATCH).(matcher.Match); ok {
+			route := Condition{matcher.Equal{"/abc"}, HandlerFunc(func(ctrl *Control, bot *tgbotapi.BotAPI, update *tgbotapi.Update) {
+				if v, ok := ctrl.Context().Value(v_MATCH).(matcher.Match); ok {
 					val = v
 				}
 			})}
