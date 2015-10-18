@@ -2,12 +2,13 @@ package telegram
 
 import (
 	"github.com/Syfaro/telegram-bot-api"
+	"github.com/gobwas/telegram/matcher"
 )
 
 func mapRouteHandler(pattern string, handlers []Handler) []Handler {
 	var mapped []Handler
 	for _, handler := range handlers {
-		mapped = append(mapped, &Conditional{Equal{pattern}, handler})
+		mapped = append(mapped, &Conditional{matcher.Equal{pattern}, handler})
 	}
 
 	return mapped

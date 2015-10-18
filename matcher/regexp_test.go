@@ -1,4 +1,4 @@
-package telegram
+package matcher
 
 import (
 	"github.com/Syfaro/telegram-bot-api"

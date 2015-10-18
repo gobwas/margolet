@@ -2,10 +2,11 @@ package telegram
 
 import (
 	"github.com/Syfaro/telegram-bot-api"
+	"github.com/gobwas/telegram/matcher"
 )
 
 type Conditional struct {
-	matcher Matcher
+	matcher matcher.Matcher
 	handler Handler
 }
 

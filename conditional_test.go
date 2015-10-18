@@ -3,6 +3,7 @@ package telegram
 import (
 	"github.com/Syfaro/telegram-bot-api"
 	. "github.com/franela/goblin"
+	"github.com/gobwas/telegram/matcher"
 	"testing"
 )
 
@@ -14,7 +15,7 @@ func TestRoute(t *testing.T) {
 		g.It("Should call valid pattern", func() {
 			var called int
 
-			route := Conditional{Equal{"/pattern"}, HandlerFunc(func(ctrl *Control, bot *tgbotapi.BotAPI, update *tgbotapi.Update) {
+			route := Conditional{matcher.Equal{"/pattern"}, HandlerFunc(func(ctrl *Control, bot *tgbotapi.BotAPI, update *tgbotapi.Update) {
 				called++
 			})}
 
@@ -24,10 +25,10 @@ func TestRoute(t *testing.T) {
 		})
 
 		g.It("Should set context's MATCH key", func() {
-			var val Match
+			var val matcher.Match
 
-			route := Conditional{Equal{"/abc"}, HandlerFunc(func(ctrl *Control, bot *tgbotapi.BotAPI, update *tgbotapi.Update) {
-				if v, ok := ctrl.Context().Value(MATCH).(Match); ok {
+			route := Conditional{matcher.Equal{"/abc"}, HandlerFunc(func(ctrl *Control, bot *tgbotapi.BotAPI, update *tgbotapi.Update) {
+				if v, ok := ctrl.Context().Value(MATCH).(matcher.Match); ok {
 					val = v
 				}
 			})}
