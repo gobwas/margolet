@@ -71,6 +71,7 @@ func (self Router) traverseUpdate(ctx context.Context, bot *tgbotapi.BotAPI, upd
 		group.Add(1)
 
 		// start handling
+		// todo recover error here
 		go handler.Serve(ctrl, bot, update)
 
 		// race with ctx
