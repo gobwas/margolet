@@ -27,8 +27,8 @@ type Polling struct {
 
 type WebHook struct {
 	URL    url.URL
-	SSL    SSL
 	Listen Listen
+	SSL    *SSL
 }
 
 type SSL struct {
@@ -63,14 +63,14 @@ func New(config Config) (app *Application, err error) {
 			return nil, err
 		}
 
-		bot.ListenForWebhook("/" + config.URL.Path)
-
 		addr := fmt.Sprintf("%s:%d", config.Listen.Addr, config.Listen.Port)
 		if config.SSL != nil {
 			go http.ListenAndServeTLS(addr, config.SSL.Cert, config.SSL.Key, nil)
 		} else {
 			go http.ListenAndServe(addr, nil)
 		}
+
+		bot.ListenForWebhook("/" + config.URL.Path)
 
 	case config.Polling != nil:
 		config := config.Polling
