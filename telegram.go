@@ -85,7 +85,7 @@ func New(config Config) (app *Application, err error) {
 func (self *Application) Listen() error {
 	for update := range self.bot.Updates {
 		ctx := context.Background()
-		go self.HandleUpdate(ctx, self.bot, &update)
+		go self.HandleUpdate(ctx, self.bot, update)
 	}
 
 	return nil

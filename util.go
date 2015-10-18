@@ -14,7 +14,7 @@ func mapRouteHandler(pattern string, handlers []Handler) []Handler {
 	return mapped
 }
 
-func mapHandlerFunc(handlers []func(*Control, *tgbotapi.BotAPI, *tgbotapi.Update)) []Handler {
+func mapHandlerFunc(handlers []func(*Control, *tgbotapi.BotAPI, tgbotapi.Update)) []Handler {
 	var mapped []Handler
 	for _, handler := range handlers {
 		mapped = append(mapped, HandlerFunc(handler))
@@ -23,7 +23,7 @@ func mapHandlerFunc(handlers []func(*Control, *tgbotapi.BotAPI, *tgbotapi.Update
 	return mapped
 }
 
-func mapErrorHandlerFunc(handlers []func(*Control, *tgbotapi.BotAPI, *tgbotapi.Update, error)) []ErrorHandler {
+func mapErrorHandlerFunc(handlers []func(*Control, *tgbotapi.BotAPI, tgbotapi.Update, error)) []ErrorHandler {
 	var mapped []ErrorHandler
 	for _, handler := range handlers {
 		mapped = append(mapped, ErrorHandlerFunc(handler))
