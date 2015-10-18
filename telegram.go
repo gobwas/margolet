@@ -63,13 +63,7 @@ func New(config Config) (app *Application, err error) {
 			return nil, err
 		}
 
-		addr := fmt.Sprintf("%s:%d", config.Listen.Addr, config.Listen.Port)
-		if config.SSL != nil {
-			go http.ListenAndServeTLS(addr, config.SSL.Cert, config.SSL.Key, nil)
-		} else {
-			go http.ListenAndServe(addr, nil)
-		}
-
+		go http.ListenAndServeTLS(fmt.Sprintf("%s:%d", config.Listen.Addr, config.Listen.Port), config.SSL.Cert, config.SSL.Key, nil)
 		bot.ListenForWebhook("/" + config.URL.Path)
 
 	case config.Polling != nil:
