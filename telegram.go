@@ -10,7 +10,8 @@ import (
 
 type Application struct {
 	Router
-	bot *tgbotapi.BotAPI
+	bot    *tgbotapi.BotAPI
+	config Config
 }
 
 type Config struct {
@@ -28,7 +29,7 @@ type Polling struct {
 type WebHook struct {
 	URL    url.URL
 	Listen Listen
-	SSL    SSL
+	SSL    *SSL
 }
 
 type SSL struct {
@@ -41,49 +42,56 @@ type Listen struct {
 	Port int
 }
 
-func NewByBot(bot *tgbotapi.BotAPI) (*Application, error) {
-	return &Application{
-		bot: bot,
-	}, nil
-}
-
 func New(config Config) (app *Application, err error) {
 	bot, err := tgbotapi.NewBotAPI(config.Token)
 	if err != nil {
 		return
 	}
+
 	bot.Debug = config.Debug
 
+	return &Application{
+		bot:    bot,
+		config: config,
+	}, nil
+}
+
+func (self *Application) Listen() error {
 	// todo move it somehow in app.Listen()
 	switch {
-	case config.WebHook != nil:
-		config := config.WebHook
+	case self.config.WebHook != nil:
+		config := self.config.WebHook
 
-		if _, err := bot.SetWebhook(tgbotapi.WebhookConfig{URL: &config.URL, Certificate: config.SSL.Cert}); err != nil {
-			return nil, err
+		// register hook
+		webhookConfig := tgbotapi.WebhookConfig{
+			URL:         &config.URL,
+			Certificate: config.SSL.Cert,
+		}
+		if _, err := self.bot.SetWebhook(webhookConfig); err != nil {
+			return err
 		}
 
+		// create server
 		go http.ListenAndServeTLS(fmt.Sprintf("%s:%d", config.Listen.Addr, config.Listen.Port), config.SSL.Cert, config.SSL.Key, nil)
-		bot.ListenForWebhook("/" + config.URL.Path)
 
-	case config.Polling != nil:
-		config := config.Polling
+		// listen path
+		self.bot.ListenForWebhook("/" + config.URL.Path)
+
+	case self.config.Polling != nil:
+		config := self.config.Polling
 
 		u := tgbotapi.NewUpdate(config.Offset)
 		u.Timeout = config.Timeout
 
-		err := bot.UpdatesChan(u)
+		err := self.bot.UpdatesChan(u)
 		if err != nil {
-			return nil, err
+			return err
 		}
+
 	default:
-		return nil, fmt.Errorf("Could not listen for updates: Polling or WebHook config should be set")
+		return fmt.Errorf("Could not listen for updates: Polling or WebHook config should be set")
 	}
 
-	return NewByBot(bot)
-}
-
-func (self *Application) Listen() error {
 	for update := range self.bot.Updates {
 		ctx := context.Background()
 		go self.HandleUpdate(ctx, self.bot, update)
