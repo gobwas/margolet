@@ -2,16 +2,11 @@ package telegram
 
 import (
 	"fmt"
-	"github.com/Syfaro/telegram-bot-api"
+	"github.com/go-telegram-bot-api/telegram-bot-api"
 	"golang.org/x/net/context"
 	"net/http"
 	"net/url"
 )
-
-type Application struct {
-	Router
-	bot *tgbotapi.BotAPI
-}
 
 type Config struct {
 	Token   string
@@ -41,10 +36,10 @@ type Listen struct {
 	Port int
 }
 
-func NewByBot(bot *tgbotapi.BotAPI) (*Application, error) {
-	return &Application{
-		bot: bot,
-	}, nil
+type Application struct {
+	Router
+	bot    *tgbotapi.BotAPI
+	config Config
 }
 
 func New(config Config) (app *Application, err error) {
@@ -54,39 +49,52 @@ func New(config Config) (app *Application, err error) {
 	}
 	bot.Debug = config.Debug
 
-	// todo move it somehow in app.Listen()
-	switch {
-	case config.WebHook != nil:
-		config := config.WebHook
-
-		if _, err := bot.SetWebhook(tgbotapi.WebhookConfig{URL: &config.URL, Certificate: config.SSL.Cert}); err != nil {
-			return nil, err
-		}
-
-		go http.ListenAndServeTLS(fmt.Sprintf("%s:%d", config.Listen.Addr, config.Listen.Port), config.SSL.Cert, config.SSL.Key, nil)
-		bot.ListenForWebhook("/" + config.URL.Path)
-
-	case config.Polling != nil:
-		config := config.Polling
-
-		u := tgbotapi.NewUpdate(config.Offset)
-		u.Timeout = config.Timeout
-
-		err := bot.UpdatesChan(u)
-		if err != nil {
-			return nil, err
-		}
-	default:
-		return nil, fmt.Errorf("Could not listen for updates: Polling or WebHook config should be set")
+	if config.WebHook == nil && config.Polling == nil {
+		return nil, fmt.Errorf("telegram: could not listen for updates: polling or webhook config fields should be set")
 	}
 
-	return NewByBot(bot)
+	return &Application{
+		bot: bot,
+	}, nil
 }
 
 func (self *Application) Listen() error {
-	for update := range self.bot.Updates {
-		ctx := context.Background()
-		go self.HandleUpdate(ctx, self.bot, update)
+	var updates <-chan tgbotapi.Update
+	fatal := make(chan error)
+
+	if self.config.WebHook != nil {
+		c := self.config.WebHook
+		if _, err := self.bot.SetWebhook(tgbotapi.WebhookConfig{URL: &c.URL, Certificate: c.SSL.Cert}); err != nil {
+			return err
+		}
+
+		ch, _ := self.bot.ListenForWebhook("/" + c.URL.Path)
+		go func() {
+			fatal <- http.ListenAndServeTLS(fmt.Sprintf("%s:%d", c.Listen.Addr, c.Listen.Port), c.SSL.Cert, c.SSL.Key, nil)
+		}()
+
+		updates = ch
+	} else {
+		c := self.config.Polling
+		u := tgbotapi.NewUpdate(c.Offset)
+		u.Timeout = c.Timeout
+
+		ch, err := self.bot.GetUpdatesChan(u)
+		if err != nil {
+			return err
+		}
+
+		updates = ch
+	}
+
+	for {
+		select {
+		case err := <-fatal:
+			return err
+		case update := <-updates:
+			ctx := context.Background()
+			go self.HandleUpdate(ctx, self.bot, update)
+		}
 	}
 
 	return nil

@@ -1,8 +1,8 @@
 package matcher
 
 import (
-	"github.com/Syfaro/telegram-bot-api"
 	. "github.com/franela/goblin"
+	"github.com/go-telegram-bot-api/telegram-bot-api"
 	"regexp"
 	"testing"
 )
