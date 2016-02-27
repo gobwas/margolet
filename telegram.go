@@ -23,7 +23,7 @@ type Polling struct {
 type WebHook struct {
 	URL    url.URL
 	Listen Listen
-	SSL    SSL
+	SSL    *SSL
 }
 
 type SSL struct {
@@ -55,6 +55,7 @@ func New(config Config) (app *Application, err error) {
 
 	return &Application{
 		bot: bot,
+		config: config,
 	}, nil
 }
 
