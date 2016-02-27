@@ -54,7 +54,7 @@ func New(config Config) (app *Application, err error) {
 	}
 
 	return &Application{
-		bot: bot,
+		bot:    bot,
 		config: config,
 	}, nil
 }
