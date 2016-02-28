@@ -1,9 +1,9 @@
 package telegram
 
 import (
+	"fmt"
 	"github.com/go-telegram-bot-api/telegram-bot-api"
 	"golang.org/x/net/context"
-	"sync"
 )
 
 type Router struct {
@@ -56,97 +56,103 @@ func (self *Router) HandleUpdate(ctx context.Context, bot *tgbotapi.BotAPI, upda
 	return
 }
 
-func (self Router) traverseUpdate(ctx context.Context, bot *tgbotapi.BotAPI, update tgbotapi.Update) error {
-	var group sync.WaitGroup
+func (self *Router) traverseUpdate(ctx context.Context, bot *tgbotapi.BotAPI, update tgbotapi.Update) (err error) {
+	// the complete will notify all controls in all handlers
+	// that traversal was completed
+	complete := make(chan struct{})
 
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
+	// initial next context for the first handler in the chain
+	nextContext, cancel := context.WithCancel(ctx)
 
-	// prevent release on first Done() in loop
-	group.Add(1)
-	defer group.Done()
-
+handling:
 	for _, handler := range self.handlers {
-		ctrl := NewControl(ctx, Wait(group.Wait))
-		group.Add(1)
-
-		// start handling
-		// todo recover error here
+		ctrl := NewControl(complete, nextContext)
 		go handler.Serve(ctrl, bot, update)
 
-		// race with ctx
 		select {
 		case <-ctx.Done():
-			group.Done()
+			err = ctx.Err()
+			break handling
 
-			err := ctx.Err()
-			ctrl.Throw(err)
-
-			return err
-
-		case signal := <-ctrl.done:
-			group.Done()
-
+		case signal := <-ctrl.signal:
 			switch signal {
 			case s_NEXT:
-				ctx = ctrl.Context()
-				continue
+				nextContext = ctrl.NextContext()
+				continue handling
 
 			case s_ERROR:
-				err := ctrl.error()
+				err = ctrl.Error()
 				cancel()
-				return err
+				break handling
 
 			case s_STOP:
+				err = ctrl.Error()
 				cancel()
-				return nil
+				break handling
+
+			default:
+				err = fmt.Errorf("telegram: unknown handler signal code: %d", signal)
+				cancel()
+				break handling
 			}
 		}
 	}
 
-	return nil
+	close(complete)
+
+	return
 }
 
-func (self Router) traverseError(ctx context.Context, bot *tgbotapi.BotAPI, update tgbotapi.Update, err error) error {
-	var group sync.WaitGroup
+func (self *Router) traverseError(ctx context.Context, bot *tgbotapi.BotAPI, update tgbotapi.Update, err error) (fatal error) {
+	// the complete will notify all controls in all handlers
+	// that traversal was completed
+	complete := make(chan struct{})
 
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
+	// initial next context for the first handler in the chain
+	nextContext, cancel := context.WithCancel(ctx)
 
-	// prevent release on first Done() in loop
-	group.Add(1)
-	defer group.Done()
-
+handling:
 	for _, handler := range self.errorHandlers {
-		ctrl := NewControl(ctx, Wait(group.Wait))
-		group.Add(1)
-
+		ctrl := NewControl(complete, nextContext)
 		go handler.ServeError(ctrl, bot, update, err)
 
 		select {
 		case <-ctx.Done():
-			group.Done()
+			fatal = ctx.Err()
+			break handling
 
-			err := ctx.Err()
-			ctrl.Throw(err)
-
-			return err
-
-		case signal := <-ctrl.done:
-			group.Done()
-
+		case signal := <-ctrl.signal:
 			switch signal {
-			case s_ERROR:
-				err = ctrl.error()
-				continue
 			case s_NEXT:
-				continue
-			case s_STOP:
+				// next means that error handler could not fix anything
+				nextContext = ctrl.NextContext()
+				continue handling
+
+			case s_ERROR:
+				// error in error handling means
+				// that there is fatal error =)
+				fatal = ctrl.Error()
 				cancel()
-				return nil
+				break handling
+
+			case s_STOP:
+				// do not read the stop error
+				// cause in error handling this means
+				// that error was handled OK
+				cancel()
+				break handling
+
+			default:
+				fatal = fmt.Errorf("telegram: unknown error handler signal code: %d", signal)
+				cancel()
+				break handling
 			}
 		}
 	}
 
-	return err
+	close(complete)
+
+	fmt.Println("traversfff err", fatal)
+
+	return
 }

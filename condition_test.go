@@ -24,19 +24,5 @@ func TestRoute(t *testing.T) {
 			g.Assert(called).Eql(1)
 		})
 
-		g.It("Should set context's MATCH key", func() {
-			var val matcher.Match
-
-			route := Condition{matcher.Equal{"/abc"}, HandlerFunc(func(ctrl *Control, bot *tgbotapi.BotAPI, update tgbotapi.Update) {
-				if v, ok := ctrl.Context().Value(MATCH).(matcher.Match); ok {
-					val = v
-				}
-			})}
-
-			route.Serve(&Control{}, &tgbotapi.BotAPI{}, tgbotapi.Update{Message: tgbotapi.Message{Text: "/abc"}})
-
-			g.Assert(val.Message.Text).Eql("/abc")
-		})
-
 	})
 }

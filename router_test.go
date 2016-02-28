@@ -125,7 +125,7 @@ func TestRouter(t *testing.T) {
 		g.It("Should change next context", func() {
 			router.UseFunc(
 				func(ctrl *Control, bot *tgbotapi.BotAPI, update tgbotapi.Update) {
-					ctrl.WithValue("foo", "bar")
+					ctrl.NextWithValue("foo", "bar")
 					ctrl.Next()
 				},
 				func(ctrl *Control, bot *tgbotapi.BotAPI, update tgbotapi.Update) {
@@ -144,6 +144,7 @@ func TestRouter(t *testing.T) {
 			}
 		})
 
+		// todo reproduce case when fatal error will come
 		g.It("Should call in chain", func() {
 
 			// this handled ok
@@ -163,29 +164,23 @@ func TestRouter(t *testing.T) {
 
 			// this could not fix the error
 			AErrorHandler := NewErrorSpy(func(ctrl *Control, bot *tgbotapi.BotAPI, update tgbotapi.Update, err error) {
-				ctrl.Throw(err)
-			})
-
-			// this could not fix error and throw new error
-			BErrorHandler := NewErrorSpy(func(ctrl *Control, bot *tgbotapi.BotAPI, update tgbotapi.Update, err error) {
-				ctrl.Throw(fmt.Errorf("BErrorHandler error"))
-			})
-
-			// this fixed error
-			CErrorHandler := NewErrorSpy(func(ctrl *Control, bot *tgbotapi.BotAPI, update tgbotapi.Update, err error) {
-				ctrl.Stop()
-			})
-
-			// this should not be called
-			DErrorHandler := NewErrorSpy(func(ctrl *Control, bot *tgbotapi.BotAPI, update tgbotapi.Update, err error) {
 				ctrl.Next()
 			})
 
+			// this fixed error
+			BErrorHandler := NewErrorSpy(func(ctrl *Control, bot *tgbotapi.BotAPI, update tgbotapi.Update, err error) {
+				ctrl.Stop()
+			})
+
+			// this could not fix error and threw error
+			CErrorHandler := NewErrorSpy(func(ctrl *Control, bot *tgbotapi.BotAPI, update tgbotapi.Update, err error) {
+				ctrl.Throw(fmt.Errorf("Could not fix!"))
+			})
+
 			router.UseFunc(AHandler.Fn, BHandler.Fn, CHandler.Fn)
-			router.UseErrFunc(AErrorHandler.Fn, BErrorHandler.Fn, CErrorHandler.Fn, DErrorHandler.Fn)
+			router.UseErrFunc(AErrorHandler.Fn, BErrorHandler.Fn, CErrorHandler.Fn)
 
 			err := router.HandleUpdate(context.Background(), &bot, update)
-
 			if err != nil {
 				g.Fail(err)
 				return
@@ -200,8 +195,7 @@ func TestRouter(t *testing.T) {
 
 			g.Assert(AErrorHandler.CallCount).Eql(1)
 			g.Assert(BErrorHandler.CallCount).Eql(1)
-			g.Assert(CErrorHandler.CallCount).Eql(1)
-			g.Assert(DErrorHandler.CallCount).Eql(0)
+			g.Assert(CErrorHandler.CallCount).Eql(0)
 			g.Assert(AErrorHandler.CalledBefore(BErrorHandler)).IsTrue()
 			g.Assert(BErrorHandler.CalledBefore(CErrorHandler)).IsTrue()
 
@@ -210,12 +204,6 @@ func TestRouter(t *testing.T) {
 				g.Fail("Mismatched type: expected error")
 			} else {
 				g.Assert(bErrArg.Error()).Eql("BHandler error")
-			}
-
-			if cErrArg, ok := CErrorHandler.Calls[0].Args[3].(error); !ok {
-				g.Fail("Mismatched type: expected error")
-			} else {
-				g.Assert(cErrArg.Error()).Eql("BErrorHandler error")
 			}
 		})
 	})

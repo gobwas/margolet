@@ -4,21 +4,12 @@ import (
 	"github.com/go-telegram-bot-api/telegram-bot-api"
 )
 
-type Slug struct {
-	Key, Value string
-}
-
-type Match struct {
-	Message tgbotapi.Message
-	Slugs   []Slug
-}
-
 type Matcher interface {
-	Match(message tgbotapi.Message) (*Match, bool)
+	Match(message tgbotapi.Message) bool
 }
 
-type MatcherFunc func(message tgbotapi.Message) (*Match, bool)
+type MatcherFunc func(message tgbotapi.Message) bool
 
-func (self MatcherFunc) Match(message tgbotapi.Message) (*Match, bool) {
+func (self MatcherFunc) Match(message tgbotapi.Message) bool {
 	return self(message)
 }

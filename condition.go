@@ -11,8 +11,7 @@ type Condition struct {
 }
 
 func (self Condition) Serve(ctrl *Control, bot *tgbotapi.BotAPI, update tgbotapi.Update) {
-	if match, ok := self.Matcher.Match(update.Message); ok {
-		ctrl.WithValue(MATCH, *match)
+	if self.Matcher.Match(update.Message) {
 		self.Handler.Serve(ctrl, bot, update)
 		return
 	}

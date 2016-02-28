@@ -7,7 +7,8 @@ import (
 	"time"
 )
 
-var Stopped = errors.New("control stopped")
+var ErrorStopped = errors.New("control stopped")
+var ErrorSignalSent = errors.New("telegram: could not modify control after signal already sent")
 
 type Signal int
 
@@ -19,80 +20,112 @@ const (
 
 type Wait func()
 
+// Control is a structure, that brings control over handling phase.
 type Control struct {
-	ctx      context.Context
-	done     chan Signal
-	wait     Wait
-	mu       sync.Mutex
-	err      error
-	isCalled bool
+	mu sync.Mutex
+
+	// ctx is context of current handling phase
+	ctx context.Context
+
+	// nextCtx specifies context for the next handling phase
+	nextCtx context.Context
+
+	// signal is a channel of Signal of control
+	signal chan Signal
+
+	// complete specifies the channel that will be closed
+	// when all underneath handlers will send some signal or will be timed out
+	complete <-chan struct{}
+
+	// err specifies error that was happened during handling phase
+	err error
+
+	// signalSent specifies the flag that shows,
+	// that control has already sent the signal to the upper layer
+	signalSent bool
 }
 
-func NewControl(ctx context.Context, wait Wait) *Control {
+// NewControl initializes a new Control with given context.
+func NewControl(complete <-chan struct{}, ctx context.Context) *Control {
 	return &Control{
-		ctx:  ctx,
-		wait: wait,
-		done: make(chan Signal),
+		ctx:      ctx,
+		nextCtx:  ctx,
+		complete: complete,
+		signal:   make(chan Signal),
 	}
 }
 
-func (self *Control) setContext(ctx context.Context) {
+func (self *Control) setNextContext(nextCtx context.Context) error {
 	self.mu.Lock()
 	defer self.mu.Unlock()
 
-	if self.isCalled {
-		panic("could not be called after control was taken")
+	if self.signalSent {
+		return ErrorSignalSent
 	}
 
-	self.ctx = ctx
+	self.nextCtx = nextCtx
+	return nil
 }
 
 func (self *Control) setState(signal Signal, err error) error {
 	self.mu.Lock()
 	defer self.mu.Unlock()
 
-	if self.isCalled {
-		panic("could not be called twice")
+	if self.signalSent {
+		return ErrorSignalSent
 	}
-	self.isCalled = true
+	self.signalSent = true
 
 	self.err = err
-	self.done <- signal
-	close(self.done)
+	self.signal <- signal
 
 	return nil
 }
 
-// returns error that wath throwed with `ctrl.Throw()`
-func (self Control) error() error {
+func (self *Control) Error() error {
 	return self.err
 }
 
-// returns context that was passed to the `ctrl.NextWithContext()` method
-func (self Control) Context() context.Context {
+func (self *Control) Context() context.Context {
 	return self.ctx
 }
 
-func (self *Control) WithCancel() context.CancelFunc {
-	ctx, cancel := context.WithCancel(self.ctx)
-	self.setContext(ctx)
-	return cancel
+func (self *Control) NextContext() context.Context {
+	return self.nextCtx
 }
 
-func (self *Control) WithTimeout(duration time.Duration) context.CancelFunc {
-	ctx, cancel := context.WithTimeout(self.ctx, duration)
-	self.setContext(ctx)
-	return cancel
+func (self *Control) NextWithCancel() (cancel context.CancelFunc, err error) {
+	nextCtx, cancel := context.WithCancel(self.nextCtx)
+	err = self.setNextContext(nextCtx)
+	if err != nil {
+		return
+	}
+
+	return
 }
 
-func (self *Control) WithDeadline(deadline time.Time) context.CancelFunc {
-	ctx, cancel := context.WithDeadline(self.ctx, deadline)
-	self.setContext(ctx)
-	return cancel
+func (self *Control) NextWithTimeout(duration time.Duration) (cancel context.CancelFunc, err error) {
+	nextCtx, cancel := context.WithTimeout(self.nextCtx, duration)
+	err = self.setNextContext(nextCtx)
+	if err != nil {
+		return
+	}
+
+	return
 }
 
-func (self *Control) WithValue(key interface{}, val interface{}) {
-	self.setContext(context.WithValue(self.ctx, key, val))
+func (self *Control) NextWithDeadline(deadline time.Time) (cancel context.CancelFunc, err error) {
+	nextCtx, cancel := context.WithDeadline(self.nextCtx, deadline)
+	err = self.setNextContext(nextCtx)
+	if err != nil {
+		return
+	}
+
+	return
+}
+
+func (self *Control) NextWithValue(key interface{}, val interface{}) error {
+	return self.setNextContext(context.WithValue(self.nextCtx, key, val))
 }
 
 func (self *Control) Next() error {
@@ -100,7 +133,10 @@ func (self *Control) Next() error {
 		return err
 	}
 
-	self.wait()
+	// lock until all underneath chain will complete
+	// this allows to do some work after all stuff is done
+	<-self.complete
+
 	return nil
 }
 
@@ -111,15 +147,21 @@ func (self *Control) Throw(e error) error {
 
 	self.err = e
 
-	self.wait()
+	// lock until all underneath chain will complete
+	// this allows to do some work after all stuff is done
+	<-self.complete
+
 	return nil
 }
 
 func (self *Control) Stop() error {
-	if err := self.setState(s_STOP, Stopped); err != nil {
+	if err := self.setState(s_STOP, ErrorStopped); err != nil {
 		return err
 	}
 
-	self.wait()
+	// lock until all underneath chain will complete
+	// this allows to do some work after all stuff is done
+	<-self.complete
+
 	return nil
 }
