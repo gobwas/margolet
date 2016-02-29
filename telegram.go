@@ -65,7 +65,11 @@ func (self *Application) Listen() error {
 
 	if self.config.WebHook != nil {
 		c := self.config.WebHook
-		if _, err := self.bot.SetWebhook(tgbotapi.WebhookConfig{URL: &c.URL, Certificate: c.SSL.Cert}); err != nil {
+		webHookConfig := tgbotapi.WebhookConfig{URL: &c.URL}
+		if c.SSL != nil {
+			webHookConfig.Certificate = c.SSL.Cert
+		}
+		if _, err := self.bot.SetWebhook(webHookConfig); err != nil {
 			return err
 		}
 
