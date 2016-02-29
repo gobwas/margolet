@@ -70,8 +70,8 @@ handling:
 		go handler.Serve(ctrl, bot, update)
 
 		select {
-		case <-ctx.Done():
-			err = ctx.Err()
+		case <-nextContext.Done():
+			err = nextContext.Err()
 			break handling
 
 		case signal := <-ctrl.signal:
@@ -117,8 +117,8 @@ handling:
 		go handler.ServeError(ctrl, bot, update, err)
 
 		select {
-		case <-ctx.Done():
-			fatal = ctx.Err()
+		case <-nextContext.Done():
+			fatal = nextContext.Err()
 			break handling
 
 		case signal := <-ctrl.signal:
