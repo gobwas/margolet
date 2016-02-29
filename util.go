@@ -2,13 +2,21 @@ package telegram
 
 import (
 	"github.com/go-telegram-bot-api/telegram-bot-api"
-	"github.com/gobwas/telegram/matcher"
+	"github.com/gobwas/glob"
 )
 
 func mapRouteHandler(pattern string, handlers []Handler) []Handler {
 	var mapped []Handler
+
+	g := glob.MustCompile(pattern)
 	for _, handler := range handlers {
-		mapped = append(mapped, &Condition{matcher.Equal{pattern}, handler})
+		mapped = append(mapped, HandlerFunc(func(ctrl *Control, bot *tgbotapi.BotAPI, update tgbotapi.Update) {
+			if g.Match(update.Message.Text) {
+				handler.Serve(ctrl, bot, update)
+			} else {
+				ctrl.Next()
+			}
+		}))
 	}
 
 	return mapped
