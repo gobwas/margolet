@@ -7,10 +7,10 @@ import (
 )
 
 type Canceler struct {
-	timeout time.Duration
+	Timeout time.Duration
 }
 
 func (c *Canceler) Serve(ctrl *telegram.Control, bot *tgbotapi.BotAPI, update tgbotapi.Update) {
-	ctrl.NextWithTimeout(c.timeout)
+	ctrl.NextWithTimeout(c.Timeout)
 	ctrl.Next()
 }
