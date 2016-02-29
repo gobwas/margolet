@@ -1,6 +1,7 @@
 package telegram
 
 import (
+	"errors"
 	"fmt"
 	"github.com/go-telegram-bot-api/telegram-bot-api"
 	"golang.org/x/net/context"
@@ -86,10 +87,14 @@ func (self *Application) Listen() error {
 		}()
 
 		updates = ch
-	} else {
+	} else if self.config.Polling != nil {
 		c := self.config.Polling
 		u := tgbotapi.NewUpdate(c.Offset)
 		u.Timeout = c.Timeout
+
+		if _, err := self.bot.RemoveWebhook(); err != nil {
+			return err
+		}
 
 		ch, err := self.bot.GetUpdatesChan(u)
 		if err != nil {
@@ -97,6 +102,8 @@ func (self *Application) Listen() error {
 		}
 
 		updates = ch
+	} else {
+		return errors.New("malformed configuration: Polling or Webhook directives are required")
 	}
 
 	for {
