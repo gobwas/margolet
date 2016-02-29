@@ -1,4 +1,4 @@
-package telegram
+package condition
 
 import (
 	. "github.com/franela/goblin"

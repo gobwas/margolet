@@ -1,4 +1,4 @@
-package telegram
+package condition
 
 import (
 	"github.com/go-telegram-bot-api/telegram-bot-api"
