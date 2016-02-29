@@ -71,7 +71,14 @@ func (self *Application) Listen() error {
 
 		ch, _ := self.bot.ListenForWebhook("/" + c.URL.Path)
 		go func() {
-			fatal <- http.ListenAndServeTLS(fmt.Sprintf("%s:%d", c.Listen.Addr, c.Listen.Port), c.SSL.Cert, c.SSL.Key, nil)
+			go func() {
+				addr := fmt.Sprintf("%s:%d", c.Listen.Addr, c.Listen.Port)
+				if c.SSL != nil {
+					fatal <- http.ListenAndServeTLS(addr, c.SSL.Cert, c.SSL.Key, nil)
+				} else {
+					fatal <- http.ListenAndServe(addr, nil)
+				}
+			}()
 		}()
 
 		updates = ch
