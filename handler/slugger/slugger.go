@@ -8,8 +8,7 @@ import (
 )
 
 type Call struct {
-	Method string
-	Args   []string
+	Args []string
 }
 
 type Slugger struct {
@@ -28,15 +27,11 @@ func (r *Slugger) Serve(ctrl *telegram.Control, bot *tgbotapi.BotAPI, update tgb
 		return
 	}
 
-	args := strings.Split(path, argsSeparator)
 	var call Call
-	if len(args) == 1 {
-		call.Method = args[0]
-	} else {
-		call.Args = make([]string, len(args)-1)
-		for i, arg := range args[1:] {
-			call.Args[i] = arg
-		}
+	args := strings.Split(path, argsSeparator)
+	call.Args = make([]string, len(args))
+	for i, arg := range args {
+		call.Args[i] = arg
 	}
 
 	ctrl.NextWithValue(reflect.TypeOf(call), call)
