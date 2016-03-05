@@ -8,7 +8,8 @@ import (
 )
 
 type Call struct {
-	Args []string
+	Args  []string
+	Query []string
 }
 
 type Slugger struct {
@@ -18,22 +19,21 @@ const methodPrefix = "/"
 const argsSeparator = " "
 
 func (r *Slugger) Serve(ctrl *telegram.Control, bot *tgbotapi.BotAPI, update tgbotapi.Update) {
-	text := update.Message.Text
-	path := strings.TrimPrefix(text, methodPrefix)
-
-	// this is not a method
-	if path == text {
-		ctrl.Next()
-		return
-	}
-
 	var call Call
-	args := strings.Split(path, argsSeparator)
-	call.Args = make([]string, len(args))
-	for i, arg := range args {
-		call.Args[i] = arg
-	}
+
+	text := strings.TrimPrefix(update.Message.Text, methodPrefix)
+	fill(&call.Args, text)
+	fill(&call.Query, update.InlineQuery.Query)
 
 	ctrl.NextWithValue(reflect.TypeOf(call), call)
 	ctrl.Next()
+}
+
+func fill(dest *[]string, s string) {
+	args := strings.Split(s, argsSeparator)
+	d := make([]string, len(args))
+	for i, arg := range args {
+		d[i] = arg
+	}
+	*dest = d
 }
