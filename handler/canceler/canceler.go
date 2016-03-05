@@ -1,8 +1,8 @@
 package canceler
 
 import (
-	"github.com/go-telegram-bot-api/telegram-bot-api"
 	"github.com/gobwas/telegram"
+	"gopkg.in/telegram-bot-api.v2"
 	"time"
 )
 

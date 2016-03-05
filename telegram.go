@@ -3,8 +3,8 @@ package telegram
 import (
 	"errors"
 	"fmt"
-	"github.com/go-telegram-bot-api/telegram-bot-api"
 	"golang.org/x/net/context"
+	"gopkg.in/telegram-bot-api.v2"
 	"net/http"
 	"net/url"
 )
@@ -74,7 +74,7 @@ func (self *Application) Listen() error {
 			return err
 		}
 
-		ch, _ := self.bot.ListenForWebhook("/" + c.URL.Path)
+		ch := self.bot.ListenForWebhook("/" + c.URL.Path)
 		go func() {
 			go func() {
 				addr := fmt.Sprintf("%s:%d", c.Listen.Addr, c.Listen.Port)

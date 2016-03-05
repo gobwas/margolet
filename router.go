@@ -2,8 +2,8 @@ package telegram
 
 import (
 	"fmt"
-	"github.com/go-telegram-bot-api/telegram-bot-api"
 	"golang.org/x/net/context"
+	"gopkg.in/telegram-bot-api.v2"
 )
 
 type Router struct {

@@ -1,8 +1,8 @@
 package matcher
 
 import (
-	"github.com/go-telegram-bot-api/telegram-bot-api"
 	"github.com/gobwas/glob"
+	"gopkg.in/telegram-bot-api.v2"
 )
 
 type Glob struct {

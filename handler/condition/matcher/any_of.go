@@ -1,6 +1,6 @@
 package matcher
 
-import "github.com/go-telegram-bot-api/telegram-bot-api"
+import "gopkg.in/telegram-bot-api.v2"
 
 type AnyOf struct {
 	Matchers []Matcher

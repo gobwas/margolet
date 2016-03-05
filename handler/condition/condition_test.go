@@ -2,9 +2,9 @@ package condition
 
 import (
 	. "github.com/franela/goblin"
-	"github.com/go-telegram-bot-api/telegram-bot-api"
 	"github.com/gobwas/telegram"
 	"github.com/gobwas/telegram/handler/condition/matcher"
+	"gopkg.in/telegram-bot-api.v2"
 	"testing"
 )
 
