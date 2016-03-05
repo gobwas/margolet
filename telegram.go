@@ -9,6 +9,8 @@ import (
 	"net/url"
 )
 
+const InlineQueryResultArticleType = "article"
+
 type Config struct {
 	Token   string
 	Debug   bool
