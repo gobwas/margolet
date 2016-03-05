@@ -6,9 +6,9 @@ type AnyOf struct {
 	Matchers []Matcher
 }
 
-func (self AnyOf) Match(message tgbotapi.Message) (ok bool) {
+func (self AnyOf) Match(update tgbotapi.Update) (ok bool) {
 	for _, matcher := range self.Matchers {
-		if matcher.Match(message) {
+		if matcher.Match(update) {
 			return
 		}
 	}

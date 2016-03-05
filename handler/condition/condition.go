@@ -12,7 +12,7 @@ type Condition struct {
 }
 
 func (self Condition) Serve(ctrl *telegram.Control, bot *tgbotapi.BotAPI, update tgbotapi.Update) {
-	if self.Matcher.Match(update.Message) {
+	if self.Matcher.Match(update) {
 		self.Handler.Serve(ctrl, bot, update)
 		return
 	}

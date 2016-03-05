@@ -16,7 +16,7 @@ func TestRoute(t *testing.T) {
 		g.It("Should call valid pattern", func() {
 			var called int
 
-			route := Condition{matcher.Equal{"/pattern"}, telegram.HandlerFunc(func(ctrl *telegram.Control, bot *tgbotapi.BotAPI, update tgbotapi.Update) {
+			route := Condition{matcher.Equal{Pattern: "/pattern"}, telegram.HandlerFunc(func(ctrl *telegram.Control, bot *tgbotapi.BotAPI, update tgbotapi.Update) {
 				called++
 			})}
 
