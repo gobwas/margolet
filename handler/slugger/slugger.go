@@ -30,6 +30,10 @@ func (r *Slugger) Serve(ctrl *telegram.Control, bot *tgbotapi.BotAPI, update tgb
 }
 
 func fill(dest *[]string, s string) {
+	if s == "" {
+		return
+	}
+
 	args := strings.Split(s, argsSeparator)
 	d := make([]string, len(args))
 	for i, arg := range args {
