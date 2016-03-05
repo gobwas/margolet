@@ -152,7 +152,5 @@ handling:
 
 	close(complete)
 
-	fmt.Println("traversfff err", fatal)
-
 	return
 }
