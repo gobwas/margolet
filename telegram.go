@@ -26,17 +26,17 @@ type Polling struct {
 type WebHook struct {
 	URL    url.URL
 	Listen Listen
-	SSL    *SSL
 }
 
-type SSL struct {
-	Cert string
+type TLS struct {
 	Key  string
+	Cert string
 }
 
 type Listen struct {
 	Addr string
 	Port int
+	TLS  *TLS
 }
 
 type Application struct {
@@ -69,26 +69,22 @@ func (self *Application) Listen() error {
 	if self.config.WebHook != nil {
 		c := self.config.WebHook
 		webHookConfig := tgbotapi.WebhookConfig{URL: &c.URL}
-		if c.SSL != nil {
-			webHookConfig.Certificate = c.SSL.Cert
+		if c.Listen.TLS != nil {
+			webHookConfig.Certificate = c.Listen.TLS.Cert
 		}
 		if _, err := self.bot.SetWebhook(webHookConfig); err != nil {
 			return err
 		}
 
-		ch := self.bot.ListenForWebhook("/" + c.URL.Path)
+		updates = self.bot.ListenForWebhook("/" + c.URL.Path)
 		go func() {
-			go func() {
-				addr := fmt.Sprintf("%s:%d", c.Listen.Addr, c.Listen.Port)
-				if c.SSL != nil {
-					fatal <- http.ListenAndServeTLS(addr, c.SSL.Cert, c.SSL.Key, nil)
-				} else {
-					fatal <- http.ListenAndServe(addr, nil)
-				}
-			}()
+			addr := fmt.Sprintf("%s:%d", c.Listen.Addr, c.Listen.Port)
+			if c.Listen.TLS != nil {
+				fatal <- http.ListenAndServeTLS(addr, c.Listen.TLS.Cert, c.Listen.TLS.Key, nil)
+			} else {
+				fatal <- http.ListenAndServe(addr, nil)
+			}
 		}()
-
-		updates = ch
 	} else if self.config.Polling != nil {
 		c := self.config.Polling
 		u := tgbotapi.NewUpdate(c.Offset)
