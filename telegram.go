@@ -25,6 +25,7 @@ type Polling struct {
 
 type WebHook struct {
 	URL    url.URL
+	Cert   string
 	Listen Listen
 }
 
@@ -69,8 +70,8 @@ func (self *Application) Listen() error {
 	if self.config.WebHook != nil {
 		c := self.config.WebHook
 		webHookConfig := tgbotapi.WebhookConfig{URL: &c.URL}
-		if c.Listen.TLS != nil {
-			webHookConfig.Certificate = c.Listen.TLS.Cert
+		if c.Cert != "" {
+			webHookConfig.Certificate = c.Cert
 		}
 		if _, err := self.bot.SetWebhook(webHookConfig); err != nil {
 			return err
