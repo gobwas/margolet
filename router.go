@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"golang.org/x/net/context"
 	"gopkg.in/telegram-bot-api.v2"
-	"reflect"
 )
 
 type Router struct {
@@ -65,8 +64,8 @@ func (self *Router) traverseUpdate(ctx context.Context, bot *tgbotapi.BotAPI, up
 	// initial next context for the first handler in the chain
 	nextContext, cancel := context.WithCancel(ctx)
 
-	logger := Logger{fmt.Sprintf("[%d][%s] ", update.UpdateID, update.Message.From.String())}
-	nextContext = context.WithValue(nextContext, reflect.TypeOf(logger), logger)
+	//	logger := Logger{fmt.Sprintf("[%d][%s] ", update.UpdateID, update.Message.From.String())}
+	//	nextContext = context.WithValue(nextContext, reflect.TypeOf(logger), logger)
 
 handling:
 	for _, handler := range self.handlers {
