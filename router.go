@@ -64,6 +64,7 @@ func (self *Router) traverseUpdate(ctx context.Context, bot *tgbotapi.BotAPI, up
 	// initial next context for the first handler in the chain
 	nextContext, cancel := context.WithCancel(ctx)
 
+	// prepare common logger
 	logger := &Logger{fmt.Sprintf("[%d][%s] ", update.UpdateID, update.Message.From.String())}
 
 handling:
@@ -113,9 +114,12 @@ func (self *Router) traverseError(ctx context.Context, bot *tgbotapi.BotAPI, upd
 	// initial next context for the first handler in the chain
 	nextContext, cancel := context.WithCancel(ctx)
 
+	// prepare common logger
+	logger := &Logger{fmt.Sprintf("[%d][%s] ", update.UpdateID, update.Message.From.String())}
+
 handling:
 	for _, handler := range self.errorHandlers {
-		ctrl := NewControl(complete, nextContext)
+		ctrl := NewControl(complete, nextContext, logger)
 		go handler.ServeError(ctrl, bot, update, err)
 
 		select {
