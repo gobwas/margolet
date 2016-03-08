@@ -43,16 +43,23 @@ type Control struct {
 	// signalSent specifies the flag that shows,
 	// that control has already sent the signal to the upper layer
 	signalSent bool
+
+	logger *Logger
 }
 
 // NewControl initializes a new Control with given context.
-func NewControl(complete <-chan struct{}, ctx context.Context) *Control {
+func NewControl(complete <-chan struct{}, ctx context.Context, logger *Logger) *Control {
 	return &Control{
 		ctx:      ctx,
 		nextCtx:  ctx,
 		complete: complete,
 		signal:   make(chan Signal),
+		logger:   logger,
 	}
+}
+
+func (self *Control) Log() *Logger {
+	return self.logger
 }
 
 func (self *Control) setNextContext(nextCtx context.Context) error {
