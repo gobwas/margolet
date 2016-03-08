@@ -9,7 +9,11 @@ import (
 	"net/url"
 )
 
-const InlineQueryResultArticleType = "article"
+const (
+	InlineQueryResultArticleType = "article"
+	ParseModeMarkdown            = "Markdown"
+	ParseModeHTML                = "HTML"
+)
 
 type Config struct {
 	Token   string
@@ -61,6 +65,10 @@ func New(config Config) (app *Application, err error) {
 		bot:    bot,
 		config: config,
 	}, nil
+}
+
+func (self *Application) Bot() *tgbotapi.BotAPI {
+	return self.bot
 }
 
 func (self *Application) Listen() error {
